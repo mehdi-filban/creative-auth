@@ -45,10 +45,18 @@ export default function AuthContainer() {
   });
 
   const getPanel = useCallback((panelMode) => {
-    return panelMode === MODES.SIGNUP ? signupRef.current : loginRef.current;
+    if (panelMode === MODES.LOGIN) {
+      return loginRef.current;
+    }
+
+    return signupRef.current;
   }, []);
 
   const getVerticalPadding = useCallback(() => {
+    if (typeof window === "undefined") {
+      return FORM_PADDING_DESKTOP;
+    }
+
     return window.innerWidth <= 600
       ? FORM_PADDING_MOBILE
       : FORM_PADDING_DESKTOP;
@@ -58,7 +66,9 @@ export default function AuthContainer() {
     (panelMode) => {
       const panel = getPanel(panelMode);
 
-      if (!panel) return 600;
+      if (!panel) {
+        return 600;
+      }
 
       return panel.scrollHeight + getVerticalPadding();
     },
@@ -69,11 +79,15 @@ export default function AuthContainer() {
     (panelMode) => {
       const panel = getPanel(panelMode);
 
-      if (!panel) return;
+      if (!panel) {
+        return;
+      }
 
       const firstInput = panel.querySelector("input");
 
-      if (!firstInput) return;
+      if (!firstInput) {
+        return;
+      }
 
       requestAnimationFrame(() => {
         firstInput.focus({
@@ -86,7 +100,6 @@ export default function AuthContainer() {
 
   const applyPanelAccessibility = useCallback((activeMode) => {
     const signup = signupRef.current;
-
     const login = loginRef.current;
 
     if (!signup || !login) {
@@ -133,11 +146,9 @@ export default function AuthContainer() {
       }
 
       const currentPanel = getPanel(mode);
-
       const nextPanel = getPanel(nextMode);
 
       const shell = shellRef.current;
-
       const line = lineRef.current;
 
       if (!currentPanel || !nextPanel || !shell || !line) {
@@ -218,10 +229,6 @@ export default function AuthContainer() {
 
       timelineRef.current = tl;
 
-      /*
-       * Prepare incoming panel
-       */
-
       tl.set(nextPanel, {
         visibility: "visible",
         autoAlpha: 1,
@@ -235,10 +242,6 @@ export default function AuthContainer() {
         filter: "blur(5px)",
         transformOrigin: "50% 0%",
       });
-
-      /*
-       * Collapse current content
-       */
 
       tl.to(currentItems, {
         duration: 0.34,
@@ -272,10 +275,6 @@ export default function AuthContainer() {
         ease: "power2.in",
       });
 
-      /*
-       * Collapse shell to line
-       */
-
       tl.to(
         shell,
         {
@@ -286,7 +285,10 @@ export default function AuthContainer() {
 
           borderRadius: 99,
 
-          backgroundColor: "rgba(255,255,255,0.08)",
+          backgroundColor:
+            theme === "dark"
+              ? "rgba(255,255,255,0.08)"
+              : "rgba(64,54,110,0.08)",
 
           borderColor: "rgba(255,255,255,0)",
 
@@ -301,10 +303,6 @@ export default function AuthContainer() {
         visibility: "hidden",
         autoAlpha: 0,
       });
-
-      /*
-       * Transition line
-       */
 
       tl.fromTo(
         line,
@@ -335,20 +333,12 @@ export default function AuthContainer() {
         ease: "sine.inOut",
       });
 
-      /*
-       * Cinematic micro-pause
-       */
-
       tl.to(
         {},
         {
           duration: 0.07,
         },
       );
-
-      /*
-       * Expand into new card
-       */
 
       tl.to(shell, {
         height: nextHeight,
@@ -386,10 +376,6 @@ export default function AuthContainer() {
         },
         "-=0.42",
       );
-
-      /*
-       * Incoming form content
-       */
 
       tl.to(
         nextItems,
@@ -434,10 +420,6 @@ export default function AuthContainer() {
     animateTransition(MODES.SIGNUP);
   }, [animateTransition]);
 
-  /*
-   * Initial GSAP setup
-   */
-
   useLayoutEffect(() => {
     const root = rootRef.current;
 
@@ -463,6 +445,10 @@ export default function AuthContainer() {
       const shell = shellRef.current;
 
       const line = lineRef.current;
+
+      if (!signup || !login || !shell || !line) {
+        return;
+      }
 
       gsap.set(signup, {
         autoAlpha: 1,
@@ -496,10 +482,6 @@ export default function AuthContainer() {
     };
   }, [getPanelHeight, applyPanelAccessibility]);
 
-  /*
-   * Resize
-   */
-
   useLayoutEffect(() => {
     const handleResize = () => {
       if (animatingRef.current) {
@@ -524,9 +506,30 @@ export default function AuthContainer() {
     };
   }, [mode, getPanelHeight]);
 
-  /*
-   * Mascot tracking
-   */
+  useLayoutEffect(() => {
+    const shell = shellRef.current;
+
+    if (!shell) {
+      return;
+    }
+
+    if (animatingRef.current) {
+      return;
+    }
+
+    gsap.set(shell, {
+      backgroundColor:
+        theme === "dark" ? "rgba(14, 16, 24, 0.78)" : "rgba(255,255,255,0.72)",
+
+      borderColor:
+        theme === "dark" ? "rgba(255,255,255,0.09)" : "rgba(40,34,70,0.09)",
+
+      boxShadow:
+        theme === "dark"
+          ? "0 30px 90px rgba(0,0,0,0.38)"
+          : "0 30px 90px rgba(68,60,100,0.12)",
+    });
+  }, [theme]);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -671,11 +674,11 @@ export default function AuthContainer() {
           bodyRotate?.(gsap.utils.clamp(-2.5, 2.5, nx * 2.5));
 
           pupilXs.forEach((move) => {
-            move(nx * 3.5);
+            move(gsap.utils.clamp(-3.5, 3.5, nx * 3.5));
           });
 
           pupilYs.forEach((move) => {
-            move(ny * 2.5);
+            move(gsap.utils.clamp(-2.5, 2.5, ny * 2.5));
           });
         },
       );
