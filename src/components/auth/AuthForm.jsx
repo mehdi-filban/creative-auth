@@ -42,29 +42,27 @@ function AuthMascot() {
 
       <div className='auth-mascot-body'>
         <div className='auth-mascot-arm auth-mascot-arm--left' />
-
         <div className='auth-mascot-arm auth-mascot-arm--right' />
       </div>
     </div>
   );
 }
 
-export default function AuthForm({ mode, onSwitch, disabled = false }) {
-  const isSignup = mode === "signup";
+export default function AuthForm({
+  mode = "signup",
+  onSwitch,
+  disabled = false,
+}) {
+  const safeMode = mode === "login" || mode === "signup" ? mode : "signup";
 
-  const copy = content[mode];
+  const isSignup = safeMode === "signup";
+
+  const copy = content[safeMode];
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (disabled) {
-      return;
-    }
-
-    /*
-     * API login / signup
-     * را اینجا متصل کن.
-     */
+    if (disabled) return;
   };
 
   return (
@@ -99,7 +97,7 @@ export default function AuthForm({ mode, onSwitch, disabled = false }) {
 
         <div data-auth-item>
           <AuthField
-            id={`${mode}-email`}
+            id={`${safeMode}-email`}
             name='email'
             label='Email'
             type='email'
@@ -111,7 +109,7 @@ export default function AuthForm({ mode, onSwitch, disabled = false }) {
 
         <div data-auth-item>
           <AuthField
-            id={`${mode}-password`}
+            id={`${safeMode}-password`}
             name='password'
             label='Password'
             type='password'
