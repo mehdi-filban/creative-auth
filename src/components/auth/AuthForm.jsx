@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import AuthField from "./AuthField";
 
 const AUTH_CONTENT = {
@@ -18,14 +20,39 @@ const AUTH_CONTENT = {
   },
 };
 
-function AuthMascot() {
+const MASCOT_MESSAGES = {
+  signup: {
+    name: "Oooh, let's get to know you 👋",
+
+    email: "Nice! Where can we reach you? ✉️",
+
+    password: "Make it strong. I'll keep your secret 🔐",
+  },
+
+  login: {
+    email: "Hey, welcome back! Good to see you 👀",
+
+    password: "Secret time... I promise I won't peek 🙈",
+  },
+};
+
+function AuthMascot({ message, eyesClosed }) {
   return (
     <div
-      className='auth-mascot'
+      className={`auth-mascot ${eyesClosed ? "auth-mascot--eyes-closed" : ""}`}
       data-auth-mascot
       data-auth-item
       aria-hidden='true'
     >
+      <div
+        key={message || "empty-bubble"}
+        className={`auth-mascot-bubble ${
+          message ? "auth-mascot-bubble--visible" : ""
+        }`}
+      >
+        <span className='auth-mascot-bubble-text'>{message}</span>
+      </div>
+
       <div className='auth-mascot-head'>
         <div className='auth-mascot-face'>
           <div className='auth-mascot-eye auth-mascot-eye--left'>
@@ -42,18 +69,29 @@ function AuthMascot() {
 
       <div className='auth-mascot-body'>
         <div className='auth-mascot-arm auth-mascot-arm--left' />
+
         <div className='auth-mascot-arm auth-mascot-arm--right' />
       </div>
     </div>
   );
 }
 
-export default function AuthForm({ mode, onSwitch, disabled = false }) {
+export default function AuthForm({
+  mode = "signup",
+  onSwitch,
+  disabled = false,
+}) {
+  const [focusedField, setFocusedField] = useState(null);
+
   const safeMode = mode === "login" ? "login" : "signup";
 
-  const copy = AUTH_CONTENT[safeMode] || AUTH_CONTENT.signup;
+  const copy = AUTH_CONTENT[safeMode] ?? AUTH_CONTENT.signup;
 
   const isSignup = safeMode === "signup";
+
+  const mascotMessage = MASCOT_MESSAGES[safeMode]?.[focusedField] ?? "";
+
+  const isPasswordFocused = focusedField === "password";
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -63,9 +101,15 @@ export default function AuthForm({ mode, onSwitch, disabled = false }) {
     }
   };
 
+  const handleSwitch = () => {
+    setFocusedField(null);
+
+    onSwitch?.();
+  };
+
   return (
     <form className='auth-form' onSubmit={handleSubmit} noValidate>
-      <AuthMascot />
+      <AuthMascot message={mascotMessage} eyesClosed={isPasswordFocused} />
 
       <header className='auth-header' data-auth-item>
         <div className='auth-eyebrow'>
@@ -86,9 +130,15 @@ export default function AuthForm({ mode, onSwitch, disabled = false }) {
               name='name'
               label='Name'
               type='text'
-              autoComplete='name'
               placeholder='Your name'
+              autoComplete='name'
               disabled={disabled}
+              onFocus={() => {
+                setFocusedField("name");
+              }}
+              onBlur={() => {
+                setFocusedField(null);
+              }}
             />
           </div>
         )}
@@ -99,9 +149,15 @@ export default function AuthForm({ mode, onSwitch, disabled = false }) {
             name='email'
             label='Email'
             type='email'
-            autoComplete='email'
             placeholder='name@example.com'
+            autoComplete='email'
             disabled={disabled}
+            onFocus={() => {
+              setFocusedField("email");
+            }}
+            onBlur={() => {
+              setFocusedField(null);
+            }}
           />
         </div>
 
@@ -111,9 +167,15 @@ export default function AuthForm({ mode, onSwitch, disabled = false }) {
             name='password'
             label='Password'
             type='password'
-            autoComplete={isSignup ? "new-password" : "current-password"}
             placeholder='••••••••'
+            autoComplete={isSignup ? "new-password" : "current-password"}
             disabled={disabled}
+            onFocus={() => {
+              setFocusedField("password");
+            }}
+            onBlur={() => {
+              setFocusedField(null);
+            }}
           />
         </div>
       </div>
@@ -141,8 +203,8 @@ export default function AuthForm({ mode, onSwitch, disabled = false }) {
         <button
           type='button'
           className='auth-switch-button'
-          onClick={onSwitch}
           disabled={disabled}
+          onClick={handleSwitch}
         >
           {copy.switchLabel}
         </button>

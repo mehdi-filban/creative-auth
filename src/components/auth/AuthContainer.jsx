@@ -10,9 +10,6 @@ const MODES = {
   LOGIN: "login",
 };
 
-const FORM_PADDING_DESKTOP = 72;
-const FORM_PADDING_MOBILE = 48;
-
 export default function AuthContainer() {
   const rootRef = useRef(null);
   const shellRef = useRef(null);
@@ -45,21 +42,15 @@ export default function AuthContainer() {
   });
 
   const getPanel = useCallback((panelMode) => {
-    if (panelMode === MODES.LOGIN) {
-      return loginRef.current;
-    }
-
-    return signupRef.current;
+    return panelMode === MODES.LOGIN ? loginRef.current : signupRef.current;
   }, []);
 
-  const getVerticalPadding = useCallback(() => {
+  const getShellPadding = useCallback(() => {
     if (typeof window === "undefined") {
-      return FORM_PADDING_DESKTOP;
+      return 72;
     }
 
-    return window.innerWidth <= 600
-      ? FORM_PADDING_MOBILE
-      : FORM_PADDING_DESKTOP;
+    return window.innerWidth <= 600 ? 48 : 72;
   }, []);
 
   const getPanelHeight = useCallback(
@@ -70,32 +61,9 @@ export default function AuthContainer() {
         return 600;
       }
 
-      return panel.scrollHeight + getVerticalPadding();
+      return panel.scrollHeight + getShellPadding();
     },
-    [getPanel, getVerticalPadding],
-  );
-
-  const focusFirstField = useCallback(
-    (panelMode) => {
-      const panel = getPanel(panelMode);
-
-      if (!panel) {
-        return;
-      }
-
-      const firstInput = panel.querySelector("input");
-
-      if (!firstInput) {
-        return;
-      }
-
-      requestAnimationFrame(() => {
-        firstInput.focus({
-          preventScroll: true,
-        });
-      });
-    },
-    [getPanel],
+    [getPanel, getShellPadding],
   );
 
   const applyPanelAccessibility = useCallback((activeMode) => {
@@ -116,18 +84,37 @@ export default function AuthContainer() {
 
     login.style.pointerEvents = signupActive ? "none" : "auto";
 
-    const signupControls = signup.querySelectorAll("input, button, a");
-
-    const loginControls = login.querySelectorAll("input, button, a");
-
-    signupControls.forEach((element) => {
+    signup.querySelectorAll("input, button, a").forEach((element) => {
       element.tabIndex = signupActive ? 0 : -1;
     });
 
-    loginControls.forEach((element) => {
+    login.querySelectorAll("input, button, a").forEach((element) => {
       element.tabIndex = signupActive ? -1 : 0;
     });
   }, []);
+
+  const focusFirstField = useCallback(
+    (panelMode) => {
+      const panel = getPanel(panelMode);
+
+      if (!panel) {
+        return;
+      }
+
+      const input = panel.querySelector("input");
+
+      if (!input) {
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        input.focus({
+          preventScroll: true,
+        });
+      });
+    },
+    [getPanel],
+  );
 
   const toggleTheme = useCallback(() => {
     setTheme((currentTheme) => {
@@ -139,6 +126,22 @@ export default function AuthContainer() {
     });
   }, []);
 
+  const finishTransition = useCallback(
+    (nextMode) => {
+      applyPanelAccessibility(nextMode);
+
+      animatingRef.current = false;
+
+      setMode(nextMode);
+      setIsAnimating(false);
+
+      requestAnimationFrame(() => {
+        focusFirstField(nextMode);
+      });
+    },
+    [applyPanelAccessibility, focusFirstField],
+  );
+
   const animateTransition = useCallback(
     (nextMode) => {
       if (animatingRef.current || nextMode === mode) {
@@ -146,9 +149,11 @@ export default function AuthContainer() {
       }
 
       const currentPanel = getPanel(mode);
+
       const nextPanel = getPanel(nextMode);
 
       const shell = shellRef.current;
+
       const line = lineRef.current;
 
       if (!currentPanel || !nextPanel || !shell || !line) {
@@ -169,16 +174,7 @@ export default function AuthContainer() {
       if (reducedMotion) {
         const tl = gsap.timeline({
           onComplete: () => {
-            applyPanelAccessibility(nextMode);
-
-            animatingRef.current = false;
-
-            setMode(nextMode);
-            setIsAnimating(false);
-
-            requestAnimationFrame(() => {
-              focusFirstField(nextMode);
-            });
+            finishTransition(nextMode);
           },
         });
 
@@ -200,8 +196,8 @@ export default function AuthContainer() {
             filter: "blur(0px)",
           })
           .set(shell, {
-            height: nextHeight,
             width: "100%",
+            height: nextHeight,
             borderRadius: 28,
           });
 
@@ -214,33 +210,24 @@ export default function AuthContainer() {
         },
 
         onComplete: () => {
-          applyPanelAccessibility(nextMode);
-
-          animatingRef.current = false;
-
-          setMode(nextMode);
-          setIsAnimating(false);
-
-          requestAnimationFrame(() => {
-            focusFirstField(nextMode);
-          });
+          finishTransition(nextMode);
         },
       });
 
       timelineRef.current = tl;
 
       tl.set(nextPanel, {
-        visibility: "visible",
         autoAlpha: 1,
+        visibility: "visible",
       });
 
       tl.set(nextItems, {
         opacity: 0,
         y: 18,
-        scaleY: 0.82,
         scaleX: 0.96,
+        scaleY: 0.82,
         filter: "blur(5px)",
-        transformOrigin: "50% 0%",
+        transformOrigin: "50% 50%",
       });
 
       tl.to(currentItems, {
@@ -258,10 +245,10 @@ export default function AuthContainer() {
           return (panelCenter - elementCenter) * 0.16;
         },
 
-        scaleY: 0.72,
-        scaleX: 0.94,
-
         opacity: 0,
+
+        scaleX: 0.94,
+        scaleY: 0.72,
 
         filter: "blur(4px)",
 
@@ -278,21 +265,21 @@ export default function AuthContainer() {
       tl.to(
         shell,
         {
-          duration: 0.42,
-
-          height: 4,
           width: "64%",
+          height: 4,
 
-          borderRadius: 99,
+          borderRadius: 999,
 
           backgroundColor:
             theme === "dark"
               ? "rgba(255,255,255,0.08)"
-              : "rgba(64,54,110,0.08)",
+              : "rgba(80,65,140,0.08)",
 
           borderColor: "rgba(255,255,255,0)",
 
           boxShadow: "0 0 0 rgba(0,0,0,0)",
+
+          duration: 0.42,
 
           ease: "power3.inOut",
         },
@@ -300,8 +287,8 @@ export default function AuthContainer() {
       );
 
       tl.set(currentPanel, {
-        visibility: "hidden",
         autoAlpha: 0,
+        visibility: "hidden",
       });
 
       tl.fromTo(
@@ -323,13 +310,17 @@ export default function AuthContainer() {
 
       tl.to(line, {
         scaleX: 1.045,
+
         duration: 0.13,
+
         ease: "sine.inOut",
       });
 
       tl.to(line, {
         scaleX: 1,
+
         duration: 0.11,
+
         ease: "sine.inOut",
       });
 
@@ -341,15 +332,13 @@ export default function AuthContainer() {
       );
 
       tl.to(shell, {
-        height: nextHeight,
         width: "100%",
+        height: nextHeight,
 
         borderRadius: 28,
 
         backgroundColor:
-          theme === "dark"
-            ? "rgba(14, 16, 24, 0.78)"
-            : "rgba(255,255,255,0.72)",
+          theme === "dark" ? "rgba(14,16,24,0.82)" : "rgba(255,255,255,0.8)",
 
         borderColor:
           theme === "dark" ? "rgba(255,255,255,0.09)" : "rgba(40,34,70,0.09)",
@@ -367,8 +356,8 @@ export default function AuthContainer() {
       tl.to(
         line,
         {
-          scaleX: 0.72,
           autoAlpha: 0,
+          scaleX: 0.72,
 
           duration: 0.28,
 
@@ -384,8 +373,8 @@ export default function AuthContainer() {
 
           y: 0,
 
-          scaleY: 1,
           scaleX: 1,
+          scaleY: 1,
 
           filter: "blur(0px)",
 
@@ -401,15 +390,7 @@ export default function AuthContainer() {
         "-=0.31",
       );
     },
-    [
-      mode,
-      theme,
-      reducedMotion,
-      getPanel,
-      getPanelHeight,
-      focusFirstField,
-      applyPanelAccessibility,
-    ],
+    [mode, theme, reducedMotion, getPanel, getPanelHeight, finishTransition],
   );
 
   const animateSignupToLogin = useCallback(() => {
@@ -463,10 +444,13 @@ export default function AuthContainer() {
       gsap.set(line, {
         autoAlpha: 0,
         scaleX: 0,
+
         transformOrigin: "50% 50%",
       });
 
       gsap.set(shell, {
+        width: "100%",
+
         height: getPanelHeight(MODES.SIGNUP),
       });
 
@@ -495,6 +479,8 @@ export default function AuthContainer() {
       }
 
       gsap.set(shell, {
+        width: "100%",
+
         height: getPanelHeight(mode),
       });
     };
@@ -509,17 +495,13 @@ export default function AuthContainer() {
   useLayoutEffect(() => {
     const shell = shellRef.current;
 
-    if (!shell) {
-      return;
-    }
-
-    if (animatingRef.current) {
+    if (!shell || animatingRef.current) {
       return;
     }
 
     gsap.set(shell, {
       backgroundColor:
-        theme === "dark" ? "rgba(14, 16, 24, 0.78)" : "rgba(255,255,255,0.72)",
+        theme === "dark" ? "rgba(14,16,24,0.82)" : "rgba(255,255,255,0.8)",
 
       borderColor:
         theme === "dark" ? "rgba(255,255,255,0.09)" : "rgba(40,34,70,0.09)",
@@ -538,11 +520,11 @@ export default function AuthContainer() {
       return undefined;
     }
 
-    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    const pointerQuery = window.matchMedia("(pointer: fine)");
+    const finePointer = window.matchMedia("(pointer: fine)");
 
-    if (motionQuery.matches || !pointerQuery.matches) {
+    if (reduced.matches || !finePointer.matches) {
       return undefined;
     }
 
@@ -554,8 +536,6 @@ export default function AuthContainer() {
       const head = mascot.querySelector(".auth-mascot-head");
 
       const face = mascot.querySelector(".auth-mascot-face");
-
-      const body = mascot.querySelector(".auth-mascot-body");
 
       const pupils = mascot.querySelectorAll(".auth-mascot-eye span");
 
@@ -573,7 +553,7 @@ export default function AuthContainer() {
         ease: "power3.out",
       });
 
-      const headRotate = gsap.quickTo(head, "rotation", {
+      const headRotation = gsap.quickTo(head, "rotation", {
         duration: 0.5,
         ease: "power3.out",
       });
@@ -588,21 +568,14 @@ export default function AuthContainer() {
         ease: "power2.out",
       });
 
-      const bodyRotate = body
-        ? gsap.quickTo(body, "rotation", {
-            duration: 0.65,
-            ease: "power3.out",
-          })
-        : null;
-
-      const pupilXs = Array.from(pupils).map((pupil) =>
+      const pupilX = Array.from(pupils).map((pupil) =>
         gsap.quickTo(pupil, "x", {
           duration: 0.18,
           ease: "power2.out",
         }),
       );
 
-      const pupilYs = Array.from(pupils).map((pupil) =>
+      const pupilY = Array.from(pupils).map((pupil) =>
         gsap.quickTo(pupil, "y", {
           duration: 0.18,
           ease: "power2.out",
@@ -613,12 +586,11 @@ export default function AuthContainer() {
         mascot,
         headX,
         headY,
-        headRotate,
+        headRotation,
         faceX,
         faceY,
-        bodyRotate,
-        pupilXs,
-        pupilYs,
+        pupilX,
+        pupilY,
       });
     });
 
@@ -632,16 +604,15 @@ export default function AuthContainer() {
           mascot,
           headX,
           headY,
-          headRotate,
+          headRotation,
           faceX,
           faceY,
-          bodyRotate,
-          pupilXs,
-          pupilYs,
+          pupilX,
+          pupilY,
         }) => {
           const panel = mascot.closest(".auth-panel");
 
-          if (panel && panel.getAttribute("aria-hidden") === "true") {
+          if (panel?.getAttribute("aria-hidden") === "true") {
             return;
           }
 
@@ -661,24 +632,20 @@ export default function AuthContainer() {
 
           const ny = deltaY / distance;
 
-          headX(gsap.utils.clamp(-7, 7, nx * 7));
+          headX(nx * 7);
+          headY(ny * 5);
 
-          headY(gsap.utils.clamp(-4, 5, ny * 5));
+          headRotation(nx * 5);
 
-          headRotate(gsap.utils.clamp(-5, 5, nx * 5));
+          faceX(nx * 4);
+          faceY(ny * 3);
 
-          faceX(gsap.utils.clamp(-4, 4, nx * 4));
-
-          faceY(gsap.utils.clamp(-3, 3, ny * 3));
-
-          bodyRotate?.(gsap.utils.clamp(-2.5, 2.5, nx * 2.5));
-
-          pupilXs.forEach((move) => {
-            move(gsap.utils.clamp(-3.5, 3.5, nx * 3.5));
+          pupilX.forEach((move) => {
+            move(nx * 3.5);
           });
 
-          pupilYs.forEach((move) => {
-            move(gsap.utils.clamp(-2.5, 2.5, ny * 2.5));
+          pupilY.forEach((move) => {
+            move(ny * 2.5);
           });
         },
       );
@@ -686,40 +653,30 @@ export default function AuthContainer() {
 
     const resetMascots = () => {
       controllers.forEach(
-        ({
-          headX,
-          headY,
-          headRotate,
-          faceX,
-          faceY,
-          bodyRotate,
-          pupilXs,
-          pupilYs,
-        }) => {
+        ({ headX, headY, headRotation, faceX, faceY, pupilX, pupilY }) => {
           headX(0);
           headY(0);
-          headRotate(0);
+
+          headRotation(0);
 
           faceX(0);
           faceY(0);
 
-          bodyRotate?.(0);
+          pupilX.forEach((move) => move(0));
 
-          pupilXs.forEach((move) => move(0));
-
-          pupilYs.forEach((move) => move(0));
+          pupilY.forEach((move) => move(0));
         },
       );
     };
 
     window.addEventListener("pointermove", handlePointerMove);
 
-    document.addEventListener("mouseleave", resetMascots);
+    window.addEventListener("mouseleave", resetMascots);
 
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
 
-      document.removeEventListener("mouseleave", resetMascots);
+      window.removeEventListener("mouseleave", resetMascots);
     };
   }, []);
 
@@ -733,12 +690,12 @@ export default function AuthContainer() {
           theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
         }
       >
-        <span className='auth-theme-toggle-track'>
-          <span className='auth-theme-toggle-thumb'>
+        <span className='auth-theme-track'>
+          <span className='auth-theme-thumb'>
             {theme === "dark" ? (
               <svg viewBox='0 0 24 24' aria-hidden='true'>
                 <path
-                  d='M20.5 14.2A8.2 8.2 0 019.8 3.5 8.6 8.6 0 1010 20.6a8.5 8.5 0 0010.5-6.4Z'
+                  d='M20 15.1A8 8 0 018.9 4a8.6 8.6 0 1011.1 11.1Z'
                   fill='none'
                   stroke='currentColor'
                   strokeWidth='1.7'
@@ -758,7 +715,7 @@ export default function AuthContainer() {
                 />
 
                 <path
-                  d='M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41'
+                  d='M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4'
                   fill='none'
                   stroke='currentColor'
                   strokeWidth='1.7'
@@ -767,10 +724,6 @@ export default function AuthContainer() {
               </svg>
             )}
           </span>
-        </span>
-
-        <span className='auth-theme-toggle-label'>
-          {theme === "dark" ? "Dark" : "Light"}
         </span>
       </button>
 

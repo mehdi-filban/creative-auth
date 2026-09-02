@@ -15,7 +15,7 @@ export default function AuthField({
 
   return (
     <div className='auth-field'>
-      <label className='auth-label' htmlFor={id}>
+      <label htmlFor={id} className='auth-label'>
         {label}
       </label>
 
@@ -32,10 +32,15 @@ export default function AuthField({
           <button
             type='button'
             className='auth-password-toggle'
-            tabIndex={-1}
             disabled={disabled}
+            tabIndex={-1}
             aria-label={showPassword ? "Hide password" : "Show password"}
-            onClick={() => setShowPassword((current) => !current)}
+            onMouseDown={(event) => {
+              event.preventDefault();
+            }}
+            onClick={() => {
+              setShowPassword((current) => !current);
+            }}
           >
             {showPassword ? (
               <svg viewBox='0 0 24 24' aria-hidden='true'>
