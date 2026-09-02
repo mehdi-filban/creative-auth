@@ -1,6 +1,6 @@
 import AuthField from "./AuthField";
 
-const content = {
+const AUTH_CONTENT = {
   signup: {
     title: "Create your account",
     description: "Join us and get started.",
@@ -48,21 +48,19 @@ function AuthMascot() {
   );
 }
 
-export default function AuthForm({
-  mode = "signup",
-  onSwitch,
-  disabled = false,
-}) {
-  const safeMode = mode === "login" || mode === "signup" ? mode : "signup";
+export default function AuthForm({ mode, onSwitch, disabled = false }) {
+  const safeMode = mode === "login" ? "login" : "signup";
+
+  const copy = AUTH_CONTENT[safeMode] || AUTH_CONTENT.signup;
 
   const isSignup = safeMode === "signup";
-
-  const copy = content[safeMode];
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (disabled) return;
+    if (disabled) {
+      return;
+    }
   };
 
   return (
