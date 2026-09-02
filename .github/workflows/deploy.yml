@@ -1,16 +1,17 @@
-name: React CI
+name: Deploy to GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
 
-  pull_request:
-    branches:
-      - main
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: react-ci-${{ github.ref }}
+  group: pages
   cancel-in-progress: true
 
 jobs:
@@ -19,36 +20,39 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
         with:
           node-version: 24
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
-
-      - name: Run lint
-        run: |
-          if npm pkg get scripts.lint | grep -qv null; then
-            npm run lint
-          fi
-
-      - name: Run tests
-        run: |
-          if npm pkg get scripts.test | grep -qv null; then
-            npm test -- --run
-          fi
+        run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
-      - name: Upload build
-        uses: actions/upload-artifact@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
         with:
-          name: production-build
-          path: dist
-          if-no-files-found: error
-          retention-days: 7
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
